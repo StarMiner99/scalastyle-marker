@@ -2,6 +2,20 @@ const vscode = require('vscode');
 
 const { XMLParser } = require('fast-xml-parser');
 const { readFileSync } = require('fs');
+const { execSync } = require('child_process');
+
+const warningDecoration = vscode.window.createTextEditorDecorationType({
+	overviewRulerColor: new vscode.ThemeColor("editorOverviewRuler.warningForeground"),
+	overviewRulerLane: vscode.OverviewRulerLane.Right,
+
+	textDecoration: 'var(--vscode-editorWarning-foreground) wavy underline 1px'
+});
+
+const errorDecoration = vscode.window.createTextEditorDecorationType({
+	overviewRulerColor: new vscode.ThemeColor("editorError.foreground"),
+	overviewRulerLane: vscode.OverviewRulerLane.Right,
+	textDecoration: 'var(--vscode-editorError-foreground) wavy underline 1px'
+});
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -9,16 +23,17 @@ const { readFileSync } = require('fs');
 function activate(context) {
 	console.log("Extension now active");
 	const scalastyle = vscode.commands.registerCommand('scalastyle-marker.scalastyle', function () {
-		vscode.window.showInformationMessage('Hello World from scalastyle-marker!');
-		//markScalastyleInEditor();
+		runScalastyle();
 	});
 
-	const runLint = vscode.workspace.onDidSaveTextDocument(markScalastyleInEditor);
-	const runOnOpen = vscode.workspace.onDidOpenTextDocument(markScalastyleInEditor);
+	const scalastyleOnSave = vscode.workspace.onDidSaveTextDocument(runScalastyle);
+	//const runLint = vscode.workspace.onDidSaveTextDocument(markScalastyleInEditor);
+	const runOnOpen = vscode.window.onDidChangeActiveTextEditor(markScalastyleInEditor);
 
 	context.subscriptions.push(scalastyle);
-	context.subscriptions.push(runLint);
+	//context.subscriptions.push(runLint);
 	context.subscriptions.push(runOnOpen);
+	context.subscriptions.push(scalastyleOnSave);
 
 }
 
@@ -34,7 +49,6 @@ function parseScalastyleXML(fileLocation) {
 }
 
 function markScalastyleInEditor() {
-	//TODO: run scalastyle
 	const config = vscode.workspace.getConfiguration('scalastyle-marker');
 	const scalastyleObject = parseScalastyleXML(config.get("scalastyleOutputFile"));
 
@@ -57,21 +71,11 @@ function markScalastyleInEditor() {
 		}
 
 		if (!warningsForFileOpen) {
+			console.log("clearing warnings");
+			editor.setDecorations(warningDecoration, []);
+			editor.setDecorations(errorDecoration, []);
 			return;
 		}
-
-		const warningDecoration = vscode.window.createTextEditorDecorationType({
-			overviewRulerColor: new vscode.ThemeColor("editorOverviewRuler.warningForeground"),
-			overviewRulerLane: vscode.OverviewRulerLane.Right,
-
-			textDecoration: 'var(--vscode-editorWarning-foreground) wavy underline 1px'
-		});
-
-		const errorDecoration = vscode.window.createTextEditorDecorationType({
-			overviewRulerColor: new vscode.ThemeColor("editorError.foreground"),
-			overviewRulerLane: vscode.OverviewRulerLane.Right,
-			textDecoration: 'var(--vscode-editorError-foreground) wavy underline 1px'
-		})
 
 		// if we have only one warning
 		if (!Array.isArray(warningsForFileOpen)) {
@@ -123,6 +127,12 @@ function parseWarningMessage(errorElement) {
 	const decoRange = new vscode.Range(startPos, endPos);
 
 	return {range: decoRange, hoverMessage: msg};
+}
+
+function runScalastyle() {
+	const returnCode = execSync(`cd ${vscode.workspace.workspaceFolders[0].uri.fsPath} && sbt scalastyle`);
+	console.log(Buffer.from(returnCode).toString('utf-8'));
+	markScalastyleInEditor();
 }
 
 // This method is called when your extension is deactivated
