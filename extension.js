@@ -10,17 +10,16 @@ const diagnosticCollection = vscode.languages.createDiagnosticCollection("scalas
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
-	console.log("Extension now active");
+	console.log("Extension now active, running scalastyle once...");
+	runScalastyle();
 	const scalastyle = vscode.commands.registerCommand('scalastyle-marker.scalastyle', function () {
 		runScalastyle();
 	});
 
 	const scalastyleOnSave = vscode.workspace.onDidSaveTextDocument(runScalastyle);
-	//const runLint = vscode.workspace.onDidSaveTextDocument(markScalastyleInEditor);
 	const runOnOpen = vscode.window.onDidChangeActiveTextEditor(markScalastyleInEditor);
 
 	context.subscriptions.push(scalastyle);
-	//context.subscriptions.push(runLint);
 	context.subscriptions.push(runOnOpen);
 	context.subscriptions.push(scalastyleOnSave);
 
@@ -131,6 +130,8 @@ function runScalastyle() {
 // This method is called when your extension is deactivated
 function deactivate() {
 	console.log("Extension now inactive");
+	diagnosticCollection.clear();
+	diagnosticCollection.dispose();
 }
 
 module.exports = {
