@@ -7,23 +7,18 @@ const { readFileSync } = require('fs');
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
-
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "scalastyle-marker" is now active!');
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with  registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('scalastyle-marker.helloWorld', function () {
-		// The code you place here will be executed every time your command is executed
-
-		// Display a message box to the user
+	console.log("Extension now active");
+	const scalastyle = vscode.commands.registerCommand('scalastyle-marker.scalastyle', function () {
 		vscode.window.showInformationMessage('Hello World from scalastyle-marker!');
-		markScalastyleInEditor();
+		//markScalastyleInEditor();
 	});
 
-	context.subscriptions.push(disposable);
+	const runLint = vscode.workspace.onDidSaveTextDocument(markScalastyleInEditor);
+	const runOnOpen = vscode.workspace.onDidOpenTextDocument(markScalastyleInEditor);
+
+	context.subscriptions.push(scalastyle);
+	context.subscriptions.push(runLint);
+	context.subscriptions.push(runOnOpen);
 
 }
 
@@ -39,6 +34,7 @@ function parseScalastyleXML(fileLocation) {
 }
 
 function markScalastyleInEditor() {
+	//TODO: run scalastyle
 	const config = vscode.workspace.getConfiguration('scalastyle-marker');
 	const scalastyleObject = parseScalastyleXML(config.get("scalastyleOutputFile"));
 
@@ -130,7 +126,9 @@ function parseWarningMessage(errorElement) {
 }
 
 // This method is called when your extension is deactivated
-function deactivate() {}
+function deactivate() {
+	console.log("Extension now inactive");
+}
 
 module.exports = {
 	activate,
