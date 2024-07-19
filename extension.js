@@ -130,7 +130,8 @@ function parseWarningMessage(errorElement) {
 }
 
 function runScalastyle() {
-	const returnCode = execSync(`cd ${vscode.workspace.workspaceFolders[0].uri.fsPath} && sbt scalastyle`);
+	const config = vscode.workspace.getConfiguration('scalastyle-marker');
+	const returnCode = execSync(`cd ${vscode.workspace.workspaceFolders[0].uri.fsPath} && ${config.get('scalastyleCommand')}`);
 	console.log(Buffer.from(returnCode).toString('utf-8'));
 	markScalastyleInEditor();
 }

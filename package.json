@@ -25,10 +25,15 @@
       "properties": {
         "scalastyle-marker.scalastyleOutputFile": {
           "type": "string",
-          "scope": "resource",
           "title": "scalastyle Output File",
           "description": "The file where scalastyle outputs its results.",
           "default": "target/scalastyle-result.xml"
+        },
+        "scalastyle-marker.scalastyleCommand": {
+          "type": "string",
+          "title": "Command to run scalastyle",
+          "description": "This command gets executed whenever scalastyle needs to be re-run.",
+          "default": "sbt scalastyle"
         }
       }
     }
