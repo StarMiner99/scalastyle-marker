@@ -1,0 +1,48 @@
+{
+  "name": "scalastyle-marker",
+  "displayName": "scalastyle-marker",
+  "description": "Uses scalastyle output xml to mark warnings in-editor.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "scalastyle-marker.helloWorld",
+        "title": "Hello World"
+      }
+    ],
+    "configuration": {
+      "title": "scalastyle-marker",
+      "properties": {
+        "scalastyle-marker.scalastyleOutputFile": {
+          "type": "string",
+          "default": "target/scalastyle-result.xml"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.7",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.91.0",
+    "@vscode/test-cli": "^0.0.9",
+    "@vscode/test-electron": "^2.4.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^4.4.0"
+  }
+}
