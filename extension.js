@@ -4,18 +4,7 @@ const { XMLParser } = require('fast-xml-parser');
 const { readFileSync } = require('fs');
 const { execSync } = require('child_process');
 
-const warningDecoration = vscode.window.createTextEditorDecorationType({
-	overviewRulerColor: new vscode.ThemeColor("editorOverviewRuler.warningForeground"),
-	overviewRulerLane: vscode.OverviewRulerLane.Right,
-
-	textDecoration: 'var(--vscode-editorWarning-foreground) wavy underline 1px'
-});
-
-const errorDecoration = vscode.window.createTextEditorDecorationType({
-	overviewRulerColor: new vscode.ThemeColor("editorError.foreground"),
-	overviewRulerLane: vscode.OverviewRulerLane.Right,
-	textDecoration: 'var(--vscode-editorError-foreground) wavy underline 1px'
-});
+const diagnosticCollection = vscode.languages.createDiagnosticCollection("scalastyle")
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -55,69 +44,72 @@ function markScalastyleInEditor() {
 	const files = scalastyleObject['checkstyle']['file']
 	console.log(scalastyleObject['checkstyle']['file']);
 
-	// access editor
-	const editor = vscode.window.activeTextEditor;
+	diagnosticCollection.clear();
 
-	if (editor) {
-		let warningsForFileOpen = null;
+	for (let index = 0; index < files.length; index++) {
+		const element = files[index];
+		console.log(element['@_name'])
 
-		for (let index = 0; index < files.length; index++) {
-			const element = files[index];
+		const diagnostics = []
+		if (!Array.isArray(element['error'])) { // only one warning (we have no array)
+			const warningParse = parseWarningMessage(element['error'], element['@_name']);
 
-			if (element['@_name'] === editor.document.fileName.toString()) {
-				console.log(element['@_name']);
-				warningsForFileOpen = element['error'];
+			let severity = vscode.DiagnosticSeverity.Error;
+			switch (element['error']['@_severity']) {
+				case 'warning':
+					severity = vscode.DiagnosticSeverity.Warning;
+					break;
+				case 'error':
+					severity = vscode.DiagnosticSeverity.Error;
+			}
+
+			const warnDiagnostic = new vscode.Diagnostic(warningParse.range, warningParse.hoverMessage, severity)
+			warnDiagnostic.source = "scalastyle"
+
+			diagnostics.push(warnDiagnostic);
+		} else { // multiple warnings
+			for (let j = 0; j < element['error'].length; j++) {
+				const warningParse = parseWarningMessage(element['error'][j], element['@_name']);
+
+				let severity = vscode.DiagnosticSeverity.Error;
+				switch (element['error'][j]['@_severity']) {
+					case 'warning':
+						severity = vscode.DiagnosticSeverity.Warning;
+						break;
+					case 'error':
+						severity = vscode.DiagnosticSeverity.Error;
+				}
+
+				const warnDiagnostic = new vscode.Diagnostic(warningParse.range, warningParse.hoverMessage, severity)
+				warnDiagnostic.source = "scalastyle"
+
+				diagnostics.push(warnDiagnostic);
 			}
 		}
-
-		if (!warningsForFileOpen) {
-			console.log("clearing warnings");
-			editor.setDecorations(warningDecoration, []);
-			editor.setDecorations(errorDecoration, []);
-			return;
-		}
-
-		// if we have only one warning
-		if (!Array.isArray(warningsForFileOpen)) {
-			const decoArray = [parseWarningMessage(warningsForFileOpen)];
-			if (warningsForFileOpen['@_severity'] === "warning") {
-				editor.setDecorations(warningDecoration, decoArray);
-			} else {
-				editor.setDecorations(errorDecoration, decoArray);
-			}
-			return;
-		}
-
-		// if we have multiple warnings
-		const warningArray = [];
-		const errorArray = [];
-		for (let i = 0; i < warningsForFileOpen.length; i++) {
-			const element = warningsForFileOpen[i];
-			const warningElement = parseWarningMessage(element);
-			if (element['@_severity'] === "warning") {
-				warningArray.push(warningElement);
-			} else {
-				errorArray.push(warningElement);
-			}
-		}
-		editor.setDecorations(warningDecoration, warningArray);
-		editor.setDecorations(errorDecoration, errorArray);
+		diagnosticCollection.set(vscode.Uri.file(element['@_name']), diagnostics);
+		console.log("finished")
 	}
+
 }
 
-function parseWarningMessage(errorElement) {
-	let line = 0;
+function parseWarningMessage(errorElement, fileName) {
+	let line = 1;
 	if ('@_line' in errorElement) {
 		line = parseInt(errorElement['@_line'])
 	}
 
 	let col = 0;
-	let colEnd = vscode.window.activeTextEditor.document.lineAt(line - 1).text.length;
+	let colEnd = 1;
+
+	if (fileName === vscode.window.activeTextEditor.document.fileName.toString()) {
+		colEnd = vscode.window.activeTextEditor.document.lineAt(line - 1).text.length;
+	}
+
 	if ('@_column' in errorElement) {
 		col = parseInt(errorElement['@_column'])
 		colEnd = col + 1;
 	}
-	console.log(col)
+	console.log(line, ":", col)
 
 	const msg = errorElement['@_message']
 
