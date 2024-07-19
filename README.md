@@ -2,6 +2,11 @@
 
 Uses scalastyle to generate diagnostics information.
 
+## Installation
+To install this extension download the vsix file from the releases page and run:
+
+`code --install-extension scalastyle-marker-x.x.x.vsix`
+
 ## Features
 
 Lints scala code using scalastyle.
