@@ -6,6 +6,9 @@ const { exec } = require('child_process');
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("scalastyle")
 
+let running = false;
+let requestAnotherRun = false;
+
 /**
  * runs on extension activation
  * @param {vscode.ExtensionContext} context
@@ -150,6 +153,12 @@ function parseWarningMessage(errorElement, fileName) {
  */
 function runScalastyle() {
 	const config = vscode.workspace.getConfiguration('scalastyle-marker');
+	if (running) {
+		requestAnotherRun = true;
+		return; // cancel if we are already running scalastyle
+	}
+
+	running = true;
 	exec(`cd ${vscode.workspace.workspaceFolders[0].uri.fsPath} && ${config.get('scalastyleCommand')}`, (error, stdout, stderr) => {
 		if (error) {
 			console.log(`exec Error: ${error}`);
@@ -158,7 +167,12 @@ function runScalastyle() {
 		}
 		console.log(stdout);
 		console.log(stderr);
+		running = false;
 		markScalastyleInEditor();
+		if (requestAnotherRun) {
+			requestAnotherRun = false;
+			runScalastyle();
+		}
 	});
 }
 
