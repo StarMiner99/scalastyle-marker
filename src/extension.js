@@ -7,6 +7,7 @@ const { execSync } = require('child_process');
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("scalastyle")
 
 /**
+ * runs on extension activation
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
@@ -27,6 +28,11 @@ function activate(context) {
 
 }
 
+/**
+ * parses the checkstyle xml file and returns it as an js object
+ * @param {string} fileLocation
+ * @returns {Object}
+ */
 function parseScalastyleXML(fileLocation) {
 	const scalastyleXML = readFileSync(`${vscode.workspace.workspaceFolders[0].uri.fsPath}/${fileLocation}`, 'utf-8');
 	const alwaysArray = [
@@ -49,6 +55,9 @@ function parseScalastyleXML(fileLocation) {
 	return scalastyleObject;
 }
 
+/**
+ * Marks the warnings in editor.
+ */
 function markScalastyleInEditor() {
 	const config = vscode.workspace.getConfiguration('scalastyle-marker');
 	const scalastyleObject = parseScalastyleXML(config.get("scalastyleOutputFile"));
@@ -94,6 +103,12 @@ function markScalastyleInEditor() {
 
 }
 
+/**
+ * parses a single error object and returns the location (vscode.Range) and msg of the warning
+ * @param {Object} errorElement
+ * @param {string} fileName
+ * @returns {Object}
+ */
 function parseWarningMessage(errorElement, fileName) {
 	let line = 1;
 	if ('@_line' in errorElement) {
@@ -123,6 +138,9 @@ function parseWarningMessage(errorElement, fileName) {
 	return {range: decoRange, hoverMessage: msg};
 }
 
+/**
+ * Runs scalastyle once, and marks its warnings in editor.
+ */
 function runScalastyle() {
 	const config = vscode.workspace.getConfiguration('scalastyle-marker');
 	const returnCode = execSync(`cd ${vscode.workspace.workspaceFolders[0].uri.fsPath} && ${config.get('scalastyleCommand')}`);
@@ -130,7 +148,9 @@ function runScalastyle() {
 	markScalastyleInEditor();
 }
 
-// This method is called when your extension is deactivated
+/**
+ * Deletes diagnostics on deactivation
+ */
 function deactivate() {
 	console.log("Extension now inactive");
 	diagnosticCollection.clear();
