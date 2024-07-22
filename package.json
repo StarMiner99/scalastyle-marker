@@ -2,6 +2,9 @@
   "name": "scalastyle-marker",
   "displayName": "scalastyle-marker",
   "description": "Uses scalastyle output xml to mark warnings in-editor.",
+  "repository": {
+    "url": "https://github.com/Aurora7913/scalastyle-marker"
+  },
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.91.0"

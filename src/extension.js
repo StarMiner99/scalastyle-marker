@@ -17,7 +17,9 @@ function activate(context) {
 	});
 
 	const scalastyleOnSave = vscode.workspace.onDidSaveTextDocument(runScalastyle);
-	const runOnOpen = vscode.window.onDidChangeActiveTextEditor(markScalastyleInEditor);
+	const runOnOpen = vscode.window.onDidChangeActiveTextEditor(function() {
+		if (vscode.window.activeTextEditor) markScalastyleInEditor();
+	});
 
 	context.subscriptions.push(scalastyle);
 	context.subscriptions.push(runOnOpen);
@@ -27,11 +29,22 @@ function activate(context) {
 
 function parseScalastyleXML(fileLocation) {
 	const scalastyleXML = readFileSync(`${vscode.workspace.workspaceFolders[0].uri.fsPath}/${fileLocation}`, 'utf-8');
+	const alwaysArray = [
+		"checkstyle.file",
+		"checkstyle.file.error"
+	]
 	const parserConfig = {
-		ignoreAttributes: false
+		ignoreAttributes: false,
+		ignoreDeclaration: true,
+		// eslint-disable-next-line no-unused-vars
+		isArray: (name, jpath, isLeafNode, isAttribute) => {
+			if (alwaysArray.indexOf(jpath) !== -1) return true;
+		}
 	}
 	const parser = new XMLParser(parserConfig);
 	const scalastyleObject = parser.parse(scalastyleXML);
+
+	console.log(scalastyleObject);
 
 	return scalastyleObject;
 }
@@ -40,51 +53,41 @@ function markScalastyleInEditor() {
 	const config = vscode.workspace.getConfiguration('scalastyle-marker');
 	const scalastyleObject = parseScalastyleXML(config.get("scalastyleOutputFile"));
 
+
 	const files = scalastyleObject['checkstyle']['file']
-	console.log(scalastyleObject['checkstyle']['file']);
 
 	diagnosticCollection.clear();
 
+	if (!files) { // there are no warnings
+		return;
+	}
+
+	console.log(files.length);
 	for (let index = 0; index < files.length; index++) {
 		const element = files[index];
 		console.log(element['@_name'])
 
 		const diagnostics = []
-		if (!Array.isArray(element['error'])) { // only one warning (we have no array)
-			const warningParse = parseWarningMessage(element['error'], element['@_name']);
+		for (let j = 0; j < element['error'].length; j++) {
+			const warningParse = parseWarningMessage(element['error'][j], element['@_name']);
 
 			let severity = vscode.DiagnosticSeverity.Error;
-			switch (element['error']['@_severity']) {
+			switch (element['error'][j]['@_severity']) {
 				case 'warning':
 					severity = vscode.DiagnosticSeverity.Warning;
 					break;
 				case 'error':
 					severity = vscode.DiagnosticSeverity.Error;
+					break;
 			}
 
 			const warnDiagnostic = new vscode.Diagnostic(warningParse.range, warningParse.hoverMessage, severity)
 			warnDiagnostic.source = "scalastyle"
 
 			diagnostics.push(warnDiagnostic);
-		} else { // multiple warnings
-			for (let j = 0; j < element['error'].length; j++) {
-				const warningParse = parseWarningMessage(element['error'][j], element['@_name']);
-
-				let severity = vscode.DiagnosticSeverity.Error;
-				switch (element['error'][j]['@_severity']) {
-					case 'warning':
-						severity = vscode.DiagnosticSeverity.Warning;
-						break;
-					case 'error':
-						severity = vscode.DiagnosticSeverity.Error;
-				}
-
-				const warnDiagnostic = new vscode.Diagnostic(warningParse.range, warningParse.hoverMessage, severity)
-				warnDiagnostic.source = "scalastyle"
-
-				diagnostics.push(warnDiagnostic);
-			}
 		}
+
+		console.log(diagnostics);
 		diagnosticCollection.set(vscode.Uri.file(element['@_name']), diagnostics);
 		console.log("finished")
 	}
