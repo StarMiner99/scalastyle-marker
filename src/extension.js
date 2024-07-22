@@ -2,7 +2,7 @@ const vscode = require('vscode');
 
 const { XMLParser } = require('fast-xml-parser');
 const { readFileSync, existsSync } = require('fs');
-const { execSync } = require('child_process');
+const { exec } = require('child_process');
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("scalastyle")
 
@@ -26,7 +26,7 @@ function activate(context) {
 	context.subscriptions.push(runOnOpen);
 	context.subscriptions.push(scalastyleOnSave);
 
-	// TODO: check for scalastyle executable / async scalastyle run
+	// TODO: check for scalastyle executable
 }
 
 /**
@@ -81,7 +81,6 @@ function markScalastyleInEditor() {
 		return;
 	}
 
-	console.log(files.length);
 	for (let index = 0; index < files.length; index++) {
 		const element = files[index];
 		console.log(element['@_name'])
@@ -105,8 +104,6 @@ function markScalastyleInEditor() {
 
 			diagnostics.push(warnDiagnostic);
 		}
-
-		console.log(diagnostics);
 		diagnosticCollection.set(vscode.Uri.file(element['@_name']), diagnostics);
 		console.log("finished")
 	}
@@ -153,9 +150,16 @@ function parseWarningMessage(errorElement, fileName) {
  */
 function runScalastyle() {
 	const config = vscode.workspace.getConfiguration('scalastyle-marker');
-	const returnCode = execSync(`cd ${vscode.workspace.workspaceFolders[0].uri.fsPath} && ${config.get('scalastyleCommand')}`);
-	console.log(Buffer.from(returnCode).toString('utf-8'));
-	markScalastyleInEditor();
+	exec(`cd ${vscode.workspace.workspaceFolders[0].uri.fsPath} && ${config.get('scalastyleCommand')}`, (error, stdout, stderr) => {
+		if (error) {
+			console.log(`exec Error: ${error}`);
+			vscode.window.showWarningMessage("No scalastyle installation found!")
+			return;
+		}
+		console.log(stdout);
+		console.log(stderr);
+		markScalastyleInEditor();
+	});
 }
 
 /**
