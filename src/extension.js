@@ -1,7 +1,7 @@
 const vscode = require('vscode');
 
 const { XMLParser } = require('fast-xml-parser');
-const { readFileSync } = require('fs');
+const { readFileSync, existsSync } = require('fs');
 const { execSync } = require('child_process');
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("scalastyle")
@@ -26,6 +26,7 @@ function activate(context) {
 	context.subscriptions.push(runOnOpen);
 	context.subscriptions.push(scalastyleOnSave);
 
+	// TODO: check for scalastyle executable / async scalastyle run
 }
 
 /**
@@ -34,7 +35,13 @@ function activate(context) {
  * @returns {Object}
  */
 function parseScalastyleXML(fileLocation) {
-	const scalastyleXML = readFileSync(`${vscode.workspace.workspaceFolders[0].uri.fsPath}/${fileLocation}`, 'utf-8');
+	const fullLocation = `${vscode.workspace.workspaceFolders[0].uri.fsPath}/${fileLocation}`;
+
+	if (!existsSync(fullLocation)) {
+		return;
+	}
+
+	const scalastyleXML = readFileSync(fullLocation, 'utf-8');
 	const alwaysArray = [
 		"checkstyle.file",
 		"checkstyle.file.error"
@@ -62,6 +69,9 @@ function markScalastyleInEditor() {
 	const config = vscode.workspace.getConfiguration('scalastyle-marker');
 	const scalastyleObject = parseScalastyleXML(config.get("scalastyleOutputFile"));
 
+	if (!scalastyleObject) {
+		return;
+	}
 
 	const files = scalastyleObject['checkstyle']['file']
 
