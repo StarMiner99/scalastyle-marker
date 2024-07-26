@@ -158,12 +158,13 @@ function runScalastyle() {
 		return; // cancel if we are already running scalastyle
 	}
 
+	console.log("starting scalastyle run...")
+
 	running = true;
 	exec(`cd ${vscode.workspace.workspaceFolders[0].uri.fsPath} && ${config.get('scalastyleCommand')}`, (error, stdout, stderr) => {
 		if (error) {
 			console.log(`exec Error: ${error}`);
-			vscode.window.showWarningMessage("No scalastyle installation found!")
-			return;
+			vscode.window.showWarningMessage("Scalastyle Error! Check logs for more information.")
 		}
 		console.log(stdout);
 		console.log(stderr);
